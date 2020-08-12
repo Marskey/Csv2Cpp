@@ -276,6 +276,10 @@ namespace aria {
           }
         }
 
+        int current_row() {
+            return m_current_row;
+        }
+
         iterator& operator++() {
           next();
           return *this;
