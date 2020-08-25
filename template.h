@@ -12,16 +12,16 @@ namespace Csv {
     ~CConditionConfig() = default;
     struct ConditionData
     {
-      // æµæ°´è™Ÿ
+      // Á÷Ë®Ì–
       Index Index;
-      // æ¢ä»¶ç·¨è™Ÿ
+      // —l¼ş¾Ì–
       int32_t ConditionID;
-      // æ¢ä»¶é¡å‹
+      // —l¼şîĞÍ
       int32_t Type;
-      // æ¢ä»¶å€¼1
+      // —l¼şÖµ1
       std::vector<int32_t> Values;
-      // ç´¢å¼•é¡å‹
-      int32_t TableType;
+      // Ë÷ÒıîĞÍ
+      std::vector<std::vector<int32_t>> TableType;
     };
   public:
     bool Load(const char* pFileName);
@@ -41,4 +41,25 @@ namespace Csv {
     }
     return elems;
   }
+
+  class CCsvConfigMgr
+  {
+  public:
+    CCsvConfigMgr(const CCsvConfigMgr&) = delete;
+    CCsvConfigMgr& operator=(const CCsvConfigMgr&) = delete;
+
+    static CCsvConfigMgr& instance() {
+        static CCsvConfigMgr instance;
+        return instance;
+    }
+
+    bool Init();
+    const std::string& GetResPath();
+  private:
+    CCsvConfigMgr() = default;
+    ~CCsvConfigMgr() = default;
+  private:
+    std::string m_resPath;
+    CConditionConfig m_conditionConfig;
+  };
 };

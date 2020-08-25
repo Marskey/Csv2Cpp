@@ -213,22 +213,20 @@ int main(int, char**) {
     headerFmt.Append("public:\n");
     headerFmt.Indent();
 
-    headerFmt.Append("bool Load(const char* pFileName);\n");
-    sourceFmt.Append("bool C{0}Config::Load(const char* pFileName) {{\n", csvName);
+    headerFmt.Append("bool Load();\n");
+    sourceFmt.Append("bool C{0}Config::Load() {{\n", csvName);
     sourceFmt.Indent();
-    sourceFmt.Append("std::ifstream file(pFileName);\n\
-  if (!file.is_open()) {{\n\
-    return false;\n\
-  }}\n\
-  this->Clear();\n\
-  csv::CSVReader csvReader(pFileName);\n\
-  file.close();\n\
-  \n\
-  if (csvReader.num_rows < {0}) {{\n\
-    return false;\n\
-  }}\n\
-  \n\
-  auto iter = csvReader.begin();\n", 3);
+    sourceFmt.Append("std::string csvFileName = \"{0}.csv\"\n\
+std::string csvFilePath = CCsvConfigMgr::Instance().GetResPath();\n\
+this->Clear();\n\
+csv::CSVReader csvReader(csvFileName);\n\
+file.close();\n\
+\n\
+if (csvReader.num_rows < {1}) {{\n\
+  return false;\n\
+}}\n\
+\n\
+auto iter = csvReader.begin();\n", csvName, 3);
 
     sourceFmt.Append("for (int i = 0; iter != csvReader.end(); ++iter, ++i) {{\n");
     sourceFmt.Indent();
@@ -240,17 +238,17 @@ int main(int, char**) {
     for (int i = 0; i < fieldNames.size(); ++i) {
         std::string fname = fieldNames[i];
         if (fieldTypes[i] == "int[]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("data.{0}.emplace_back(atoi(value.c_str()));\n", fname);
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "int[][]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
             sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
@@ -261,17 +259,17 @@ int main(int, char**) {
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "int64[]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("data.{0}.emplace_back(atoi64(value.c_str()));\n", fname);
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "int64[][]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
             sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
@@ -282,17 +280,17 @@ int main(int, char**) {
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "string[]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("data.{0}.emplace_back(value.c_str());\n", fname);
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "string[][]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
             sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
@@ -303,17 +301,17 @@ int main(int, char**) {
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "bool[]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("data.{0}.emplace_back(value == \"true\");\n", fname);
             sourceFmt.Outdent();
             sourceFmt.Append("}}\n");
         } else if (fieldTypes[i] == "bool[][]") {
-            sourceFmt.Append("std::string strValues = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-            sourceFmt.Append("std::vector<std::string> vecValues = split(strValues, '|');\n");
-            sourceFmt.Append("for (auto& value : vecValues) {{\n");
+            sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
+            sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n");
+            sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
             sourceFmt.Indent();
             sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
             sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
@@ -334,10 +332,10 @@ int main(int, char**) {
     sourceFmt.Outdent();
     sourceFmt.Append("}}\n");
 
-    headerFmt.Append("bool Reload(const char* pFileName);\n");
-    sourceFmt.Append("bool C{0}Config::Reload(const char* pFileName) {{\n", csvName);
+    headerFmt.Append("bool Reload();\n");
+    sourceFmt.Append("bool C{0}Config::Reload() {{\n", csvName);
     sourceFmt.Indent();
-    sourceFmt.Append("return Load(pFileName);\n");
+    sourceFmt.Append("return Load();\n");
     sourceFmt.Outdent();
     sourceFmt.Append("}}\n");
     headerFmt.Append("bool Clear();\n");
