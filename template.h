@@ -48,7 +48,7 @@ namespace Csv {
     CCsvConfigMgr(const CCsvConfigMgr&) = delete;
     CCsvConfigMgr& operator=(const CCsvConfigMgr&) = delete;
 
-    static CCsvConfigMgr& instance() {
+    static CCsvConfigMgr& Instance() {
         static CCsvConfigMgr instance;
         return instance;
     }
