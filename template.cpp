@@ -1,14 +1,10 @@
 #include "template.h"
 #include "csv.hpp"
 namespace Csv {
-  bool CConditionConfig::Load(const char* pFileName) {
-    std::ifstream file(pFileName);
-    if (!file.is_open()) {
-      return false;
-    }
+  // ================== Condition.csv start ==================
+  bool CConditionConfig::Load(const std::string& filePath) {
     this->Clear();
-    csv::CSVReader csvReader(pFileName);
-    file.close();
+    csv::CSVReader csvReader(filePath);
 
     if (csvReader.num_rows < 3) {
       return false;
@@ -39,10 +35,15 @@ namespace Csv {
     }
     return true;
   }
-  bool CConditionConfig::Reload(const char* pFileName) {
-    return Load(pFileName);
-  }
   bool CConditionConfig::Clear() {
     m_mapData.clear();
   }
+  const CConditionConfig::ConditionData* CConditionConfig::GetData(Index nIndex) {
+  auto it = m_mapData.find(nIndex);
+  if (it != m_mapData.end()) {
+    return &it->second;
+  }
+  return nullptr;
+  }
+  // ================== Condition.csv end ==================
 }
