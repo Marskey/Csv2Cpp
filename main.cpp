@@ -1,7 +1,19 @@
+#ifdef WIN32
+#include <io.h>
+#include <filesystem>
+#else
+#include <dirent.h>
+#endif
 #include <iostream>
 
 #include "csv.hpp"
 #include "fmt/printf.h"
+
+#define NAME_SPACE_NAME "Csv"
+#define OUTPUT_FILE_NAME "CsvConfigInsts"
+
+std::string g_csvPath = "";
+std::string g_outputPath = "";
 
 class Formater
 {
@@ -117,7 +129,63 @@ std::string GetCppTypeName(const std::string& csvFieldType) {
 }
 
 bool ParseArguments(int argc, char* argv[]) {
+    if (argc != 3) {
+        std::cout << "Argument must be two." << std::endl;
+        return false;
+    }
+
+    g_csvPath = argv[1];
+    const std::filesystem::path csvPath(g_csvPath);
+    if (!is_directory(csvPath)) {
+        std::cout << "csvpath cannot be a file!" << std::endl;
+        return false;
+    }
+
+    g_outputPath = argv[2];
+    const std::filesystem::path outputPath(g_outputPath);
+    if (!is_directory(outputPath)) {
+        std::cout << "outputPath cannot be a file!" << std::endl;
+        return false;
+    }
+
     return true;
+}
+
+void GetFileList(std::string path, std::vector<std::string>& out) {
+    if (path.size() != 0
+        && path.back() != '\\') {
+        path.push_back('\\');
+    }
+    std::string temp = path + '*';
+#ifdef WIN32
+    intptr_t hFile = 0;
+    struct _finddata_t fileinfo;
+    if ((hFile = _findfirst(temp.c_str(), &fileinfo)) != -1) {
+        do {
+            if (!(fileinfo.attrib & _A_HIDDEN)) {
+                if (!(fileinfo.attrib & _A_SUBDIR)) {
+                    out.emplace_back(path + fileinfo.name);
+                } else if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0) {
+                    GetFileList(path + fileinfo.name, out);
+                }
+            }
+        } while (_findnext(hFile, &fileinfo) == 0);
+        _findclose(hFile);
+    }
+#else
+    DIR* dir = opendir("/home/hanchao/picture");//打开指定目录
+    dirent* p = NULL;//定义遍历指针
+    while ((p = readdir(dir)) != NULL)//开始逐个遍历
+    {
+        //这里需要注意，linux平台下一个目录中有"."和".."隐藏文件，需要过滤掉
+        if (p->d_name[0] != '.')//d_name是一个char数组，存放当前遍历到的文件名
+        {
+            string name = "/home/hanchao/picture/" + string(p->d_name);
+            cout << name << endl;
+        }
+    }
+    closedir(dir);//关闭指定目录   
+#endif
 }
 
 int main(int argc, char* argv[]) {
@@ -127,13 +195,11 @@ int main(int argc, char* argv[]) {
     }
 
     // gen file
-    std::string nameSpace = "Csv";
-
     Formater headerFmt;
     Formater sourceFmt;
-    sourceFmt.Append("#include \"template.h\"\n");
+    sourceFmt.Append("#include \"{}.h\"\n", OUTPUT_FILE_NAME);
     sourceFmt.Append("#include \"csv.hpp\"\n");
-    sourceFmt.Append("namespace {} {{\n", nameSpace);
+    sourceFmt.Append("namespace {} {{\n", NAME_SPACE_NAME);
     sourceFmt.Indent();
 
     headerFmt.Append("#pragma once\n");
@@ -142,7 +208,7 @@ int main(int argc, char* argv[]) {
     headerFmt.Append("#include <unordered_map>\n");
     headerFmt.Append("#include <sstream>\n");
 
-    headerFmt.Append("namespace {} {{\n", nameSpace);
+    headerFmt.Append("namespace {} {{\n", NAME_SPACE_NAME);
     headerFmt.Indent();
     // define
     headerFmt.Append("#define MAKE_UINT64(a, b) (((uint64_t)(a) & 0xffffffffUL) | ((((uint64_t)(b)) & 0xffffffffUL) << 32))\n");
@@ -159,60 +225,88 @@ private:\\\n\
   __class_name__& operator=(const __class_name__&) = default;\\\n");
     headerFmt.Append("using Index = int32_t;\n");
 
-    for (int i = 0; i < 1; ++i) {
+    std::vector<std::string> fileList;
+    GetFileList(g_csvPath, fileList);
+
+    for (const auto& filePath : fileList) {
+        std::string ext = "";
+        std::string csvName = filePath;
+        std::string::size_type posDot = filePath.find_last_of('.');
+        if (posDot != std::string::npos) {
+            std::string::size_type posSpe = filePath.find_last_of('\\', posDot);
+            if (posSpe == std::string::npos) {
+                posSpe = 0;
+            }
+
+            ext = filePath.substr(posDot + 1);
+            csvName = filePath.substr(posSpe + 1, posDot - posSpe - 1);
+        }
+
+        std::for_each(ext.begin(), ext.end(), [](auto& ch) {
+            ch = tolower(ch);
+        });
+
+        if (ext != "csv") {
+            continue;
+        }
+
+        std::string csvFilePath = filePath;
+
         csv::CSVFormat format;
         format.delimiter({ ',' })
             .quote('"')
             .header_row(0)
             .detect_bom(true);
 
-        std::string csvName = "Condition";
-        std::string csvFileName = "Condition.csv";
-        csv::CSVReader csvReader("Condition.csv", format);
+        csv::CSVReader csvReader(filePath, format);
 
         std::vector<std::string> fieldNames;
         std::vector<std::string> fieldTypes;
         std::vector<std::string> fieldDescs;
 
-        // col names
+        // col name row
         fieldNames = csvReader.get_col_names();
         auto iter = csvReader.begin();
-        // second row
+        // type name row
         for (auto& fieldType : *iter) {
             fieldTypes.emplace_back(fieldType.get<>());
         }
         ++iter;
         if (iter == csvReader.end()) {
-            std::cout << "Error: header row must be 3. csv name is: "<< csvFileName << std::endl;
+            std::cout << "Error: header row must be 3. csv name is: "<< csvFilePath << std::endl;
             continue;
         }
-        // third row
+        // descriptor row
         for (auto& fieldDesc : *iter) {
             fieldDescs.emplace_back(fieldDesc.get<>());
         }
 
         if (fieldNames.size() == 0) {
-            std::cout << "Error: field count is zero. csv name is: "<< csvFileName << std::endl;
+            std::cout << "Error: field count is zero. csv name is: "<< csvFilePath << std::endl;
             continue;
         }
 
         if (fieldNames.size() != fieldTypes.size()
             && fieldNames.size() != fieldDescs.size()) {
-            std::cout << "Error: field name, field type and field desc count not the same. csv name is: "<< csvFileName << std::endl;
+            std::cout << "Error: field name, field type and field desc count not the same. csv name is: "<< csvFilePath << std::endl;
             continue;
         }
 
         // start gen config
-        headerFmt.Append("// ================== {0}.csv start ==================\n", csvName);
-        sourceFmt.Append("// ================== {0}.csv start ==================\n", csvName);
+        std::string className = fmt::format("{}Inst", csvName);
+        std::string structName = fmt::format("Data");
+
         headerFmt.Append("\n");
+        headerFmt.Append("// ================== {0}.csv start ==================\n", csvName);
+        sourceFmt.Append("\n");
+        sourceFmt.Append("// ================== {0}.csv start ==================\n", csvName);
         headerFmt.Append(
-            "class C{0}Config\n"
+            "class {0}\n"
             "{{\n"
-            , csvName
+            , className
         );
         headerFmt.Indent();
-        headerFmt.Append("CSV_DECLARE_SINGLETON(C{0}Config)\n", csvName);
+        headerFmt.Append("CSV_DECLARE_SINGLETON({0})\n", className);
         headerFmt.Outdent();
         headerFmt.Append("public:\n", csvName);
         headerFmt.Indent();
@@ -220,7 +314,6 @@ private:\\\n\
         std::vector<std::string> vecIndexs;
         vecIndexs.reserve(2);
 
-        std::string structName = fmt::format("{0}Data", csvName);
         headerFmt.Append("struct {}\n", structName);
         headerFmt.Append("{{\n");
         headerFmt.Indent();
@@ -245,14 +338,12 @@ private:\\\n\
         headerFmt.Indent();
 
         headerFmt.Append("bool Load(const std::string& filePath);\n");
-        sourceFmt.Append("bool C{0}Config::Load(const std::string& filePath) {{\n", csvName);
+        sourceFmt.Append("bool {0}::Load(const std::string& filePath) {{\n", className);
         sourceFmt.Indent();
         sourceFmt.Append("this->Clear();\n\
-csv::CSVReader csvReader(filePath);\n\
-\n\
-if (csvReader.num_rows < {1}) {{\n\
-  return false;\n\
-}}\n\
+csv::CSVFormat format;\n\
+format.delimiter({{ ',' }}).quote('\"').header_row(0).detect_bom(true);\n\
+csv::CSVReader csvReader(filePath, format);\n\
 \n\
 auto iter = csvReader.begin();\n", csvName, 3);
 
@@ -266,19 +357,19 @@ auto iter = csvReader.begin();\n", csvName, 3);
         for (int i = 0; i < fieldNames.size(); ++i) {
             std::string fname = fieldNames[i];
             if (fieldTypes[i] == "int[]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, ';');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(atoi(value.c_str()));\n", fname);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "int[][]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, '|');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
-                sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
+                sourceFmt.Append("std::vector<std::string> vecSubValues = _Internal::split(value, ';');\n");
                 sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(atoi(subValue.c_str()));\n", fname);
@@ -287,19 +378,19 @@ auto iter = csvReader.begin();\n", csvName, 3);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "int64[]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, ';');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(atoi64(value.c_str()));\n", fname);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "int64[][]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, '|');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
-                sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
+                sourceFmt.Append("std::vector<std::string> vecSubValues = _Internal::split(value, ';');\n");
                 sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(atoi64(subValue.c_str()));\n", fname);
@@ -308,19 +399,19 @@ auto iter = csvReader.begin();\n", csvName, 3);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "string[]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, ';');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(value.c_str());\n", fname);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "string[][]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, '|');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
-                sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
+                sourceFmt.Append("std::vector<std::string> vecSubValues = _Internal::split(value, ';');\n");
                 sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(subValue.c_str());\n", fname);
@@ -329,19 +420,19 @@ auto iter = csvReader.begin();\n", csvName, 3);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "bool[]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n", fname);
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, ';');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(value == \"true\");\n", fname);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "bool[][]") {
-                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>;\n", fname);
-                sourceFmt.Append("std::vector<std::string> vecStr{0} = split(str{0}, '|');\n");
+                sourceFmt.Append("std::string str{0} = (*iter)[\"{0}\"].get<std::string>();\n", fname);
+                sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, '|');\n");
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
-                sourceFmt.Append("std::vector<std::string> vecSubValues = split(value, ';');\n");
+                sourceFmt.Append("std::vector<std::string> vecSubValues = _Internal::split(value, ';');\n");
                 sourceFmt.Append("for (auto& subValue : vecSubValues) {{\n");
                 sourceFmt.Indent();
                 sourceFmt.Append("data.{0}.emplace_back(subValue == \"true\");\n", fname);
@@ -350,8 +441,18 @@ auto iter = csvReader.begin();\n", csvName, 3);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else {
-                sourceFmt.Append("data.{0} = (*iter)[\"{0}\"].get<{1}>;\n", fieldNames[i], GetCppTypeName(fieldTypes[i]));
+                sourceFmt.Append("data.{0} = (*iter)[\"{0}\"].get<{1}>();\n", fieldNames[i], GetCppTypeName(fieldTypes[i]));
             }
+        }
+
+        if (vecIndexs.size() == 1) {
+            sourceFmt.Append("m_mapData[data.{0}] = data;\n", vecIndexs[0]);
+        } else if (vecIndexs.size() == 2) {
+            sourceFmt.Append("uint16_t key = MAKE_UINT64(data.{0}, data.{1});\n", vecIndexs[0], vecIndexs[1]);
+            sourceFmt.Append("m_mapData[key] = data;\n");
+        } else {
+            std::cout << "index count must be 1 or 2. current is " << vecIndexs.size() << ". csv name is: "<< csvFilePath<< std::endl;
+            continue;
         }
 
         sourceFmt.Outdent();
@@ -360,8 +461,8 @@ auto iter = csvReader.begin();\n", csvName, 3);
         sourceFmt.Outdent();
         sourceFmt.Append("}}\n");
 
-        headerFmt.Append("bool Clear();\n");
-        sourceFmt.Append("bool C{0}Config::Clear() {{\n", csvName);
+        headerFmt.Append("void Clear();\n");
+        sourceFmt.Append("void {0}::Clear() {{\n", className);
         sourceFmt.Indent();
         sourceFmt.Append("m_mapData.clear();\n");
         sourceFmt.Outdent();
@@ -369,25 +470,29 @@ auto iter = csvReader.begin();\n", csvName, 3);
 
         if (vecIndexs.size() == 1) {
             headerFmt.Append("const {}* GetData(Index n{});\n", structName, vecIndexs[0]);
-            sourceFmt.Append("const C{0}Config::{1}* C{0}Config::GetData(Index n{2}) {{\n\
-auto it = m_mapData.find(nIndex);\n\
+            sourceFmt.Append("const {0}::{1}* {0}::GetData(Index n{2}) {{\n", className, structName, vecIndexs[0]);
+            sourceFmt.Indent();
+            sourceFmt.Append("auto it = m_mapData.find(n{0});\n\
 if (it != m_mapData.end()) {{\n\
   return &it->second;\n\
 }}\n\
-return nullptr;\n\
-}}\n", csvName, structName, vecIndexs[0]);
+return nullptr;\n", vecIndexs[0]);
+            sourceFmt.Outdent();
+            sourceFmt.Append("}}\n");
         } else if (vecIndexs.size() == 2) {
             headerFmt.Append("const {}* GetData(int32_t n{}, int32_t n{});\n", structName, vecIndexs[0], vecIndexs[1]);
-            sourceFmt.Append("const C{0}Config::{1}* C{0}Config::GetData(Index n{2}, Index n{3}) {{\n\
-uint16_t key = MAKE_UINT64(n{2}, n{3});\n\
+            sourceFmt.Append("const {0}::{1}* {0}::GetData(Index n{2}, Index n{3}) {{\n", className, structName, vecIndexs[0], vecIndexs[1]);
+            sourceFmt.Indent();
+            sourceFmt.Append("uint16_t key = MAKE_UINT64(n{0}, n{1});\n\
 auto it = m_mapData.find(key);\n\
 if (it != m_mapData.end()) {{\n\
   return &it->second;\n\
 }}\n\
-return nullptr;\n\
-}}\n", csvName, structName, vecIndexs[0], vecIndexs[1]);
+return nullptr;\n", vecIndexs[0], vecIndexs[1]);
+            sourceFmt.Outdent();
+            sourceFmt.Append("}}\n");
         } else {
-            std::cout << "index count must be 1 or 2. current is " << vecIndexs.size() << ". csv name is: "<< csvFileName<< std::endl;
+            std::cout << "index count must be 1 or 2. current is " << vecIndexs.size() << ". csv name is: "<< csvFilePath<< std::endl;
             continue;
         }
 
@@ -402,6 +507,8 @@ return nullptr;\n\
         sourceFmt.Append("// ================== {0}.csv end ==================\n", csvName);
     }
 
+    headerFmt.Append("namespace _Internal {{");
+    headerFmt.Indent();
     // split fuc
     headerFmt.Append("\n");
     headerFmt.Append("static std::vector<std::string> split(const std::string& s, char delim) {{\n");
@@ -415,6 +522,8 @@ while (std::getline(ss, item, delim)) {{\n\
 return elems;\n");
     headerFmt.Outdent();
     headerFmt.Append("}}\n");
+    headerFmt.Outdent();
+    headerFmt.Append("}}\n");
 
     // header namespace
     headerFmt.Outdent();
@@ -424,10 +533,12 @@ return elems;\n");
     sourceFmt.Outdent();
     sourceFmt.Append("}}\n");
 
-    std::fstream fs("../../../template.h", std::fstream::out);
+    std::string headerFilePath = fmt::format("{}/{}.h", g_outputPath, OUTPUT_FILE_NAME);
+    std::string sourceFilePath = fmt::format("{}/{}.cpp", g_outputPath, OUTPUT_FILE_NAME);
+    std::fstream fs(headerFilePath.c_str(), std::fstream::out);
     fs.write(headerFmt.getBuf().c_str(), headerFmt.getBuf().size());
     fs.close();
-    fs.open("../../../template.cpp", std::fstream::out);
+    fs.open(sourceFilePath.c_str(), std::fstream::out);
     fs.write(sourceFmt.getBuf().c_str(), sourceFmt.getBuf().size());
     fs.close();
     return 0;
