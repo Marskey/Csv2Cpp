@@ -4,9 +4,13 @@ project(Csv2Cpp VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-option(BUILD_TEST "Build test" off)
 include(Csv2Cpp.cmake)
 
-if (BUILD_TEST)
-    include(test.cmake)
-endif (BUILD_TEST)
+option(BUILD_TEST "Build test" ON)
+set(BUILD_GMOCK off)
+set(INSTALL_GTEST off)
+set(gtest_force_shared_crt on)
+include(test.cmake)
+
+set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

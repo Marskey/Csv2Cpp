@@ -1,14 +1,64 @@
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 #include "csv.hpp"
 #include "CsvConfigInsts.h"
 
-TEST(GetData, TestGetData) {
-    std::string csvFile = "Condiftion.csv";
-    EXPECT_TRUE(Csv::ConditionInst::Instance().Load(csvFile));
+#define CSV_FILE_NAME "H:/Csv2Cpp/testdata/OneIndex.csv"
+#define CSV_TWO_INDEX_FILE_NAME "H:/Csv2Cpp/testdata/TwoIndex.csv"
+#define HEAD_ROW 0
+#define HEADER_COUNT 3
+
+TEST(LoadData, TestOneIndexDataCount) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+
+    std::ifstream file(csvFile);
+    bool op = file.is_open();
+    EXPECT_TRUE(op);
+    if (!file.is_open()) {
+        return;
+    } 
+
+    int nActualNum = 0 - HEADER_COUNT;
+    file.seekg(0);
+    char c;
+    while (!file.eof() && file.get(c)) {
+        if (c == '\n') {
+            ++nActualNum;
+        }
+    }
+    EXPECT_EQ(Csv::OneIndexInst::Instance().GetAllData().size(), nActualNum);
+}
+
+TEST(LoadData, TestTwoIndexDataCount) {
+    std::string csvFile = CSV_TWO_INDEX_FILE_NAME;
+    EXPECT_TRUE(Csv::TwoIndexInst::Instance().Load(csvFile));
+
+    std::ifstream file(csvFile);
+    bool op = file.is_open();
+    EXPECT_TRUE(op);
+    if (!file.is_open()) {
+        return;
+    } 
+
+    int nActualNum = 0 - HEADER_COUNT;
+    file.seekg(0);
+    char c;
+    while (!file.eof() && file.get(c)) {
+        if (c == '\n') {
+            ++nActualNum;
+        }
+    }
+
+    EXPECT_EQ(Csv::TwoIndexInst::Instance().GetAllData().size(), nActualNum);
+}
+
+TEST(GetData, TestOneIndexData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
         .quote('"')
-        .header_row(0)
+        .header_row(HEAD_ROW)
         .detect_bom(true);
 
     csv::CSVReader originData(csvFile, format);
@@ -18,38 +68,323 @@ TEST(GetData, TestGetData) {
             continue;
         }
 
-        auto* pData = Csv::ConditionInst::Instance().GetData(i - 3);
-        EXPECT_NE(pData, nullptr);
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
         if (pData != nullptr) {
-            EXPECT_EQ(pData->Index, (*iter)["Index"].get<int32_t>());
-            EXPECT_EQ(pData->ConditionID, (*iter)["ConditionID"].get<int32_t>());
-            EXPECT_EQ(pData->Type, (*iter)["Type"].get<int32_t>());
+            EXPECT_EQ(pData->Index, (*iter)["Index"].get<int32_t>()) << "csv index is: " << csvIdx;
+            EXPECT_EQ(pData->ConditionID, (*iter)["ConditionID"].get<int32_t>()) << "csv index is: " << csvIdx;
+            EXPECT_EQ(pData->Type, (*iter)["Type"].get<int32_t>()) << "csv index is: " << csvIdx;
+        }
+    }
+}
 
-            {
-                std::string values = (*iter)["Values"].get<>();
-                std::vector<std::string> out = Csv::_Internal::split(values, ';');
-                EXPECT_EQ(pData->Values.size(), out.size());
-                if (pData->Values.size() == out.size()) {
-                    EXPECT_EQ(pData->Values[0], atoi(out[0].c_str()));
-                    EXPECT_EQ(pData->Values[1], atoi(out[1].c_str()));
+TEST(GetData, TestTwoIndexData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::TwoIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx1 = (*iter)["Index"].get<int32_t>();
+        int32_t csvIdx2 = (*iter)["ConditionID"].get<int32_t>();
+        auto* pData = Csv::TwoIndexInst::Instance().GetData(csvIdx1, csvIdx2);
+        EXPECT_NE(pData, nullptr) << "csv index1 is: " << csvIdx1 << ", index2 is: " << csvIdx2;
+        if (pData != nullptr) {
+            EXPECT_EQ(pData->Index, (*iter)["Index"].get<int32_t>()) << "csv index is: " << csvIdx1 << ", index2 is: " << csvIdx2;
+            EXPECT_EQ(pData->ConditionID, (*iter)["ConditionID"].get<int32_t>()) << "csv index is: " << csvIdx1 << ", index2 is: " << csvIdx2;
+            EXPECT_EQ(pData->Type, (*iter)["Type"].get<int32_t>()) << "csv index is: " << csvIdx1 << ", index2 is: " << csvIdx2;
+        }
+    }
+}
+
+TEST(GetData, TestIntArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["IntArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, ';');
+            auto& vecTargetArray = pData->IntArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                    EXPECT_EQ(vecTargetArray[arrIdx], atoi(out[arrIdx].c_str())) << "csv index is: " << csvIdx;
                 }
             }
-            
-            {
-                std::string values = (*iter)["TableType"].get<>();
-                std::vector<std::string> out = Csv::_Internal::split(values, '|');
-                EXPECT_EQ(pData->TableType.size(), out.size());
-                if (pData->TableType.size() == out.size()) {
-                    for (int idx = 0; idx < out.size(); ++idx) {
-                        std::vector<std::string> subOut = Csv::_Internal::split(out[idx], ';');
-                        EXPECT_EQ(pData->TableType[idx][0], atoi(subOut[0].c_str()));
-                        EXPECT_EQ(pData->TableType[idx][1], atoi(subOut[1].c_str()));
-                        EXPECT_EQ(pData->TableType[idx][2], atoi(subOut[2].c_str()));
+        }
+    }
+}
+
+TEST(GetData, TestInt64ArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["Int64Array"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, ';');
+            auto& vecTargetArray = pData->Int64Array;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                    EXPECT_EQ(vecTargetArray[arrIdx], _atoi64(out[arrIdx].c_str())) << "csv index is: " << csvIdx;
+                }
+            }
+        }
+    }
+}
+
+TEST(GetData, TestStringArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["StringArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, ';');
+            auto& vecTargetArray = pData->StringArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                    EXPECT_EQ(vecTargetArray[arrIdx], out[arrIdx]) << "csv index is: " << csvIdx;
+                }
+            }
+        }
+    }
+}
+
+TEST(GetData, TestBoolArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["BoolArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, ';');
+            auto& vecTargetArray = pData->BoolArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                    EXPECT_EQ(vecTargetArray[arrIdx], out[arrIdx] == "true") << "csv index is: " << csvIdx;
+                }
+            }
+        }
+    }
+}
+
+TEST(GetData, TestIntDulArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["IntDulArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, '|');
+            auto& vecTargetArray = pData->IntDulArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int idx = 0; idx < out.size(); ++idx) {
+                    std::vector<std::string> subOut = Csv::_Internal::split(out[idx], ';');
+                    for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                        EXPECT_EQ(vecTargetArray[idx][arrIdx], atoi(subOut[arrIdx].c_str())) << "csv index is: " << csvIdx;
                     }
                 }
             }
         }
     }
-    
-
 }
+
+TEST(GetData, TestInt64DulArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["Int64DulArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, '|');
+            auto& vecTargetArray = pData->Int64DulArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int idx = 0; idx < out.size(); ++idx) {
+                    std::vector<std::string> subOut = Csv::_Internal::split(out[idx], ';');
+                    for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                        EXPECT_EQ(vecTargetArray[idx][arrIdx], _atoi64(subOut[arrIdx].c_str())) << "csv index is: " << csvIdx;
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST(GetData, TestStringDulArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["StringDulArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, '|');
+            auto& vecTargetArray = pData->StringDulArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int idx = 0; idx < out.size(); ++idx) {
+                    std::vector<std::string> subOut = Csv::_Internal::split(out[idx], ';');
+                    for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                        EXPECT_EQ(vecTargetArray[idx][arrIdx], subOut[arrIdx]) << "csv index is: " << csvIdx;
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST(GetData, TestBoolDulArrayData) {
+    std::string csvFile = CSV_FILE_NAME;
+    EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
+    csv::CSVFormat format;
+    format.delimiter({ ',' })
+        .quote('"')
+        .header_row(HEAD_ROW)
+        .detect_bom(true);
+
+    csv::CSVReader originData(csvFile, format);
+    auto iter = originData.begin();
+    for (int i = 0; iter != originData.end(); ++iter, ++i) {
+        if (i < 3) {
+            continue;
+        }
+
+        int32_t csvIdx = (*iter)["Index"].get<int32_t>();
+        auto* pData = Csv::OneIndexInst::Instance().GetData(csvIdx);
+        EXPECT_NE(pData, nullptr) << "csv index is: " << csvIdx;
+        if (pData != nullptr) {
+            std::string values = (*iter)["BoolDulArray"].get<>();
+            std::vector<std::string> out = Csv::_Internal::split(values, '|');
+            auto& vecTargetArray = pData->BoolDulArray;
+            EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
+            if (vecTargetArray.size() == out.size()) {
+                for (int idx = 0; idx < out.size(); ++idx) {
+                    std::vector<std::string> subOut = Csv::_Internal::split(out[idx], ';');
+                    for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
+                        EXPECT_EQ(vecTargetArray[idx][arrIdx], subOut[arrIdx] == "true") << "csv index is: " << csvIdx;
+                    }
+                }
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
