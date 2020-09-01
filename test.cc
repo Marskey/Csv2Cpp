@@ -2,18 +2,18 @@
 #include "csv.hpp"
 #include "CsvConfigInsts.h"
 
-#define CSV_FILE_NAME "H:/Csv2Cpp/testdata/OneIndex.csv"
-#define CSV_TWO_INDEX_FILE_NAME "H:/Csv2Cpp/testdata/TwoIndex.csv"
+std::string csvFilePath = "";
+std::string csvTwoIndexFilePath = "";
 #define HEAD_ROW 0
 #define HEADER_COUNT 3
 
 TEST(LoadData, TestOneIndexDataCount) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
 
     std::ifstream file(csvFile);
-    bool op = file.is_open();
-    EXPECT_TRUE(op);
+    bool open = file.is_open();
+    EXPECT_TRUE(open);
     if (!file.is_open()) {
         return;
     } 
@@ -30,12 +30,12 @@ TEST(LoadData, TestOneIndexDataCount) {
 }
 
 TEST(LoadData, TestTwoIndexDataCount) {
-    std::string csvFile = CSV_TWO_INDEX_FILE_NAME;
+    std::string csvFile = csvTwoIndexFilePath;
     EXPECT_TRUE(Csv::TwoIndexInst::Instance().Load(csvFile));
 
     std::ifstream file(csvFile);
-    bool op = file.is_open();
-    EXPECT_TRUE(op);
+    bool open = file.is_open();
+    EXPECT_TRUE(open);
     if (!file.is_open()) {
         return;
     } 
@@ -53,7 +53,7 @@ TEST(LoadData, TestTwoIndexDataCount) {
 }
 
 TEST(GetData, TestOneIndexData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -80,7 +80,7 @@ TEST(GetData, TestOneIndexData) {
 }
 
 TEST(GetData, TestTwoIndexData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::TwoIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -108,7 +108,7 @@ TEST(GetData, TestTwoIndexData) {
 }
 
 TEST(GetData, TestIntArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -141,7 +141,7 @@ TEST(GetData, TestIntArrayData) {
 }
 
 TEST(GetData, TestInt64ArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -166,7 +166,7 @@ TEST(GetData, TestInt64ArrayData) {
             EXPECT_EQ(vecTargetArray.size(), out.size()) << "csv index is: " << csvIdx;
             if (vecTargetArray.size() == out.size()) {
                 for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
-                    EXPECT_EQ(vecTargetArray[arrIdx], _atoi64(out[arrIdx].c_str())) << "csv index is: " << csvIdx;
+                    EXPECT_EQ(vecTargetArray[arrIdx], std::stoll(out[arrIdx].c_str())) << "csv index is: " << csvIdx;
                 }
             }
         }
@@ -174,7 +174,7 @@ TEST(GetData, TestInt64ArrayData) {
 }
 
 TEST(GetData, TestStringArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -207,7 +207,7 @@ TEST(GetData, TestStringArrayData) {
 }
 
 TEST(GetData, TestBoolArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -240,7 +240,7 @@ TEST(GetData, TestBoolArrayData) {
 }
 
 TEST(GetData, TestIntDulArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -276,7 +276,7 @@ TEST(GetData, TestIntDulArrayData) {
 }
 
 TEST(GetData, TestInt64DulArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -303,7 +303,7 @@ TEST(GetData, TestInt64DulArrayData) {
                 for (int idx = 0; idx < out.size(); ++idx) {
                     std::vector<std::string> subOut = Csv::_Internal::split(out[idx], ';');
                     for (int arrIdx = 0; arrIdx < vecTargetArray.size(); ++arrIdx) {
-                        EXPECT_EQ(vecTargetArray[idx][arrIdx], _atoi64(subOut[arrIdx].c_str())) << "csv index is: " << csvIdx;
+                        EXPECT_EQ(vecTargetArray[idx][arrIdx], std::stoll(subOut[arrIdx].c_str())) << "csv index is: " << csvIdx;
                     }
                 }
             }
@@ -312,7 +312,7 @@ TEST(GetData, TestInt64DulArrayData) {
 }
 
 TEST(GetData, TestStringDulArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -348,7 +348,7 @@ TEST(GetData, TestStringDulArrayData) {
 }
 
 TEST(GetData, TestBoolDulArrayData) {
-    std::string csvFile = CSV_FILE_NAME;
+    std::string csvFile = csvFilePath;
     EXPECT_TRUE(Csv::OneIndexInst::Instance().Load(csvFile));
     csv::CSVFormat format;
     format.delimiter({ ',' })
@@ -384,6 +384,14 @@ TEST(GetData, TestBoolDulArrayData) {
 }
 
 int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        std::cout << "Arguments must be TWO." << std::endl;
+        return 1;
+    }
+
+    csvFilePath = argv[1];
+    csvTwoIndexFilePath = argv[2];
+
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

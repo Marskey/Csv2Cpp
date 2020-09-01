@@ -1,4 +1,5 @@
 include_directories(thirdparty/googletest/googletest/include)
+include_directories(testdata)
 
 set(TEST_SRC_FILE 
     "test.cc"

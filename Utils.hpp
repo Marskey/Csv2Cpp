@@ -1,7 +1,6 @@
 #pragma once
 #ifdef WIN32
 #include <io.h>
-#include <filesystem>
 #else
 #include <dirent.h>
 #endif
@@ -53,11 +52,11 @@ public:
 
     static void GetFileList(std::string path, std::vector<std::string>& out) {
         if (path.size() != 0
-            && path.back() != '\\') {
-            path.push_back('\\');
+            && path.back() != '/') {
+            path.push_back('/');
         }
-        std::string temp = path + '*';
 #ifdef WIN32
+        std::string temp = path + '*';
         intptr_t hFile = 0;
         struct _finddata_t fileinfo;
         if ((hFile = _findfirst(temp.c_str(), &fileinfo)) != -1) {
@@ -73,15 +72,19 @@ public:
             _findclose(hFile);
         }
 #else
-        DIR* dir = opendir("/home/hanchao/picture");//打开指定目录
-        dirent* p = NULL;//定义遍历指针
-        while ((p = readdir(dir)) != NULL)//开始逐个遍历
+        DIR* dir = opendir(path.c_str());//打开指定目录
+        dirent* p = nullptr;//定义遍历指针
+        while ((p = readdir(dir)) != nullptr)//开始逐个遍历
         {
             //这里需要注意，linux平台下一个目录中有"."和".."隐藏文件，需要过滤掉
             if (p->d_name[0] != '.')//d_name是一个char数组，存放当前遍历到的文件名
             {
-                string name = "/home/hanchao/picture/" + string(p->d_name);
-                cout << name << endl;
+                std::string filePath = path + std::string(p->d_name);
+                if (p->d_type == DT_REG) {
+                    out.emplace_back(filePath);
+                } else if (p->d_type == DT_DIR) {
+                    GetFileList(filePath, out);   
+                }
             }
         }
         closedir(dir);//关闭指定目录   

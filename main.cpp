@@ -1,11 +1,6 @@
 #include <iostream>
 
-#ifdef WIN32
 #include <filesystem>
-#else
-#include <dirent.h>
-#endif
-
 #include "csv.hpp"
 #include "fmt/printf.h"
 #include "Utils.hpp"
@@ -174,7 +169,7 @@ private:\\\n\
         std::string csvName = filePath;
         std::string::size_type posDot = filePath.find_last_of('.');
         if (posDot != std::string::npos) {
-            std::string::size_type posSpe = filePath.find_last_of('\\', posDot);
+            std::string::size_type posSpe = filePath.find_last_of('/', posDot);
             if (posSpe == std::string::npos) {
                 posSpe = 0;
             }
@@ -324,7 +319,7 @@ auto iter = csvReader.begin();\n");
                 sourceFmt.Append("std::vector<std::string> vecStr{0} = _Internal::split(str{0}, ';');\n", fname);
                 sourceFmt.Append("for (auto& value : vecStr{0}) {{\n", fname);
                 sourceFmt.Indent();
-                sourceFmt.Append("data.{0}.emplace_back(_atoi64(value.c_str()));\n", fname);
+                sourceFmt.Append("data.{0}.emplace_back(std::stoll(value.c_str()));\n", fname);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
             } else if (fieldTypes[i] == "int64[][]") {
@@ -336,7 +331,7 @@ auto iter = csvReader.begin();\n");
                 sourceFmt.Append("std::vector<int64_t> vecSub{0};\n", fname);
                 sourceFmt.Append("for (auto& subValue : _vecSubValues) {{\n");
                 sourceFmt.Indent();
-                sourceFmt.Append("vecSub{0}.emplace_back(_atoi64(subValue.c_str()));\n", fname);
+                sourceFmt.Append("vecSub{0}.emplace_back(std::stoll(subValue.c_str()));\n", fname);
                 sourceFmt.Outdent();
                 sourceFmt.Append("}}\n");
                 sourceFmt.Append("data.{0}.emplace_back(vecSub{0});\n", fname);

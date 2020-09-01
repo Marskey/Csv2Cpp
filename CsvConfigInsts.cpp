@@ -62,7 +62,7 @@ namespace Csv {
         std::string strInt64Array = (*iter)["Int64Array"].get<std::string>();
         std::vector<std::string> vecStrInt64Array = _Internal::split(strInt64Array, ';');
         for (auto& value : vecStrInt64Array) {
-          data.Int64Array.emplace_back(_atoi64(value.c_str()));
+          data.Int64Array.emplace_back(std::stoll(value.c_str()));
         }
         std::string strInt64DulArray = (*iter)["Int64DulArray"].get<std::string>();
         std::vector<std::string> vecStrInt64DulArray = _Internal::split(strInt64DulArray, '|');
@@ -70,7 +70,7 @@ namespace Csv {
           std::vector<std::string> _vecSubValues = _Internal::split(value, ';');
           std::vector<int64_t> vecSubInt64DulArray;
           for (auto& subValue : _vecSubValues) {
-            vecSubInt64DulArray.emplace_back(_atoi64(subValue.c_str()));
+            vecSubInt64DulArray.emplace_back(std::stoll(subValue.c_str()));
           }
           data.Int64DulArray.emplace_back(vecSubInt64DulArray);
         }
@@ -157,7 +157,7 @@ namespace Csv {
         std::string strInt64Array = (*iter)["Int64Array"].get<std::string>();
         std::vector<std::string> vecStrInt64Array = _Internal::split(strInt64Array, ';');
         for (auto& value : vecStrInt64Array) {
-          data.Int64Array.emplace_back(_atoi64(value.c_str()));
+          data.Int64Array.emplace_back(std::stoll(value.c_str()));
         }
         std::string strInt64DulArray = (*iter)["Int64DulArray"].get<std::string>();
         std::vector<std::string> vecStrInt64DulArray = _Internal::split(strInt64DulArray, '|');
@@ -165,7 +165,7 @@ namespace Csv {
           std::vector<std::string> _vecSubValues = _Internal::split(value, ';');
           std::vector<int64_t> vecSubInt64DulArray;
           for (auto& subValue : _vecSubValues) {
-            vecSubInt64DulArray.emplace_back(_atoi64(subValue.c_str()));
+            vecSubInt64DulArray.emplace_back(std::stoll(subValue.c_str()));
           }
           data.Int64DulArray.emplace_back(vecSubInt64DulArray);
         }
